@@ -66,7 +66,7 @@ one session, verified before moving on:
 | Rebuild | Contents | Deliverable / proof | Status |
 |---------|----------|---------------------|--------|
 | **R0** | Project scaffold, asset pipeline script, Kenney download verified, GLBs produced | `public/assets/models/` populated (~5 MB), sizes logged | ✅ **done — 133 GLBs, 8.4 MB, live preview** |
-| **R1** | `world.js` — 7×7 grid, 7 districts, roads, sidewalks, water (Hatirjheel), landmarks ×16, depot, colliders, Bangla signage | Dev server shows the city; collision list exported | ⬜ |
+| **R1** | `world.js` — 7×7 grid, 7 districts, roads, sidewalks, water (Hatirjheel), landmarks ×16, depot, colliders, Bangla signage | Dev server shows the city; collision list exported | ✅ **done — 373 instances / 94 instanced meshes / 351 colliders, screenshot-verified** |
 | **R2** | `player.js` — procedural rickshaw (body, canopy, spoked wheels, rear art), bicycle physics, battery, camera; `input.js` keyboard+touch | Drive it in the browser | ⬜ |
 | **R3** | `traffic.js` — 14 AI cars, 16 peds, honk-jump reaction, circle collision | Traffic moves, reacts to horn | ⬜ |
 | **R4** | `game.js` — job beacons, passenger types/fares, tribunal + Gorib Card odds, anger/heat/battery/condition, game-over modes | One full fare loop playable | ⬜ |
