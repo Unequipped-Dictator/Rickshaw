@@ -143,10 +143,13 @@ try {
   status.textContent = `FAILED: ${err.message}`;
 }
 
-addEventListener('resize', () => {
+addEventListener('resize', onResize);
+addEventListener('orientationchange', () => setTimeout(onResize, 250));
+visualViewport?.addEventListener('resize', onResize);
+function onResize() {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
-});
+}
 
 bindTouch();

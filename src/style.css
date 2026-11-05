@@ -37,22 +37,23 @@ html, body {
 
 .hidden { display: none !important; }
 
-/* ---------- dashboard (speed + battery + message) ---------- */
+/* ---------- dashboard: compact cluster pinned TOP-LEFT, never mid-screen ---------- */
 #dash {
-  display: flex; align-items: center; gap: 18px;
+  display: flex; align-items: center; gap: clamp(8px, 1.6vh, 14px);
   background: var(--panel); border: 1px solid rgba(255, 248, 231, 0.25);
-  border-radius: 10px; padding: 10px 16px; backdrop-filter: blur(4px);
+  border-radius: 9px; padding: clamp(4px, 1vh, 8px) clamp(8px, 1.6vh, 14px);
+  backdrop-filter: blur(4px);
   pointer-events: none;
 }
-#speedo { display: flex; align-items: baseline; gap: 6px; min-width: 110px; }
-#speedo #speed-val { font-size: 40px; font-weight: 800; color: var(--rickshaw-yellow); font-variant-numeric: tabular-nums; }
-#speedo .unit { font-size: 12px; letter-spacing: 0.18em; opacity: 0.75; }
-#battery-wrap { display: flex; flex-direction: column; gap: 4px; width: min(220px, 26vw); }
-#battery-label { font-size: 10px; letter-spacing: 0.22em; opacity: 0.75; }
-#battery-track { height: 12px; border: 2px solid rgba(255, 248, 231, 0.7); border-radius: 7px; overflow: hidden; }
+#speedo { display: flex; align-items: baseline; gap: 4px; min-width: 62px; }
+#speedo #speed-val { font-size: clamp(20px, 4.6vh, 34px); font-weight: 800; color: var(--rickshaw-yellow); font-variant-numeric: tabular-nums; }
+#speedo .unit { font-size: clamp(8px, 1.4vh, 11px); letter-spacing: 0.16em; opacity: 0.75; }
+#battery-wrap { display: flex; flex-direction: column; gap: 3px; width: clamp(90px, 16vw, 170px); }
+#battery-label { font-size: clamp(7px, 1.3vh, 10px); letter-spacing: 0.22em; opacity: 0.75; }
+#battery-track { height: clamp(7px, 1.6vh, 11px); border: 2px solid rgba(255, 248, 231, 0.7); border-radius: 6px; overflow: hidden; }
 #battery-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #35d07f, #a8e063); transition: width 0.25s; }
 #battery-bar.low { background: linear-gradient(90deg, #d7263d, #ff6b35); }
-#dash-msg { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; color: var(--rickshaw-yellow); min-width: 130px; }
+#dash-msg { font-size: clamp(10px, 1.9vh, 14px); font-weight: 700; letter-spacing: 0.06em; color: var(--rickshaw-yellow); }
 
 /* ---------- touch controls ---------- */
 #touch-ui {
@@ -60,36 +61,48 @@ html, body {
   display: none;
 }
 @media (pointer: coarse) { #touch-ui { display: block; } }
-.tc { position: absolute; bottom: 18px; display: flex; gap: 12px; align-items: flex-end; }
-.tc-left { left: 18px; }
-.tc-right { right: 18px; }
+.tc {
+  position: absolute;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  display: flex; gap: clamp(8px, 1.6vmin, 14px); align-items: flex-end;
+}
+.tc-left { left: calc(14px + env(safe-area-inset-left)); }
+.tc-right { right: calc(14px + env(safe-area-inset-right)); }
 .tbtn {
   pointer-events: auto;
-  width: 74px; height: 74px; border-radius: 50%;
+  width: clamp(54px, 11vmin, 78px); height: clamp(54px, 11vmin, 78px); border-radius: 50%;
   border: 2px solid rgba(255, 248, 231, 0.65);
   background: rgba(10, 14, 12, 0.55); color: var(--text);
-  font: 700 13px/1 'Noto Sans', sans-serif; letter-spacing: 0.08em;
+  font: 700 clamp(10px, 1.9vmin, 13px)/1 'Noto Sans', sans-serif; letter-spacing: 0.08em;
   display: flex; align-items: center; justify-content: center;
   touch-action: none; -webkit-tap-highlight-color: transparent;
   backdrop-filter: blur(3px);
 }
-.tbtn svg { width: 34px; height: 34px; }
-.tbtn.big { width: 92px; height: 92px; font-size: 15px; background: rgba(0, 105, 78, 0.6); }
-.tbtn.small { width: 60px; height: 60px; font-size: 11px; }
+.tbtn svg { width: 40%; height: 40%; }
+.tbtn.big { width: clamp(70px, 14vmin, 100px); height: clamp(70px, 14vmin, 100px); font-size: clamp(12px, 2.2vmin, 15px); background: rgba(0, 105, 78, 0.6); }
+.tbtn.small { width: clamp(46px, 9vmin, 62px); height: clamp(46px, 9vmin, 62px); font-size: clamp(9px, 1.6vmin, 11px); }
 .tbtn.active { background: rgba(255, 207, 63, 0.75); color: #10241d; border-color: var(--rickshaw-yellow); }
 
 /* ---------- HUD ---------- */
 #hud {
   position: fixed; inset: 0; z-index: 10; pointer-events: none;
-  display: flex; flex-direction: column; justify-content: space-between;
-  padding: 12px 16px;
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+           calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
 }
 #hud-top, #hud-bottom {
+  align-self: stretch;
   background: var(--panel); border: 1px solid rgba(255, 248, 231, 0.25);
-  border-radius: 8px; padding: 8px 12px;
-  font-size: 13px; letter-spacing: 0.06em; backdrop-filter: blur(4px);
+  border-radius: 8px; padding: 6px 10px;
+  font-size: clamp(10px, 1.6vh, 13px); letter-spacing: 0.06em; backdrop-filter: blur(4px);
 }
+#hud-bottom { margin-top: auto; }
 #hud-bottom b { color: var(--rickshaw-yellow); }
+/* the bottom line + top hint are dev info — hide on touch devices */
+@media (pointer: coarse) {
+  #hud-bottom, #hud-top { display: none; }
+}
 
 /* portrait rotate overlay (landscape-first game) */
 #rotate-hint {
