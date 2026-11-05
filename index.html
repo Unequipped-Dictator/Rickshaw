@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Rickshaw Mama: Gorib Card</title>
+  <script type="module" crossorigin src="./assets/index-CC8HA6A9.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BhHVmj1d.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="loading">
+    <div class="loading-title">রিকশা মামা</div>
+    <div class="loading-sub">RICKSHAW MAMA: GORIB CARD</div>
+    <div class="loading-bar"><div id="loading-fill"></div></div>
+    <div id="loading-status">loading assets…</div>
+  </div>
+
+  <div id="flash"></div>
+
+  <div id="hud" class="hidden">
+    <div id="hud-top">R2 — RIDEABLE</div>
+
+    <div id="dash">
+      <div id="speedo"><span id="speed-val">0</span><span class="unit">KM/H</span></div>
+      <div id="battery-wrap">
+        <div id="battery-label">BATTERY</div>
+        <div id="battery-track"><div id="battery-bar"></div></div>
+      </div>
+      <div id="dash-msg" role="status"></div>
+    </div>
+
+    <div id="hud-bottom"></div>
+  </div>
+
+  <div id="touch-ui">
+    <div class="tc tc-left">
+      <button id="t-left" class="tbtn" aria-label="steer left">
+        <svg viewBox="0 0 24 24"><path d="M15 5 L7 12 L15 19" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="t-right" class="tbtn" aria-label="steer right">
+        <svg viewBox="0 0 24 24"><path d="M9 5 L17 12 L9 19" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div class="tc tc-right">
+      <button id="t-horn" class="tbtn small" aria-label="horn">HORN</button>
+      <button id="t-brake" class="tbtn" aria-label="brake">BRAKE</button>
+      <button id="t-gas" class="tbtn big" aria-label="gas">GAS</button>
+    </div>
+  </div>
+
+  <div id="rotate-hint">
+    <div>পাশে ঘুরাও<br><span>ROTATE YOUR PHONE — this game runs in landscape</span></div>
+  </div>
+
+</body>
+</html>
