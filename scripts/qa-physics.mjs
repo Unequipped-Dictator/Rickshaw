@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 640, height: 360 } });
-await page.goto('http://localhost:5174/?lite', { waitUntil: 'domcontentloaded' });
+await page.goto('http://localhost:5173/?lite', { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('#loading.hidden', { timeout: 90000, state: 'attached' });
 
 const res = await page.evaluate(() => {
@@ -16,10 +16,18 @@ const res = await page.evaluate(() => {
   I.throttle = 1; stepN(240);
   out.accel = { v: +st.v.toFixed(2), dist: +st.odo.toFixed(1) }; // expect v=12 (capped), dist ~35m
 
-  // 2) steer left 1s at speed
+  // 2) steering direction: RIGHT input must curve screen-right (heading decreases)
   const h0 = st.heading;
-  I.steer = -1; stepN(60); I.steer = 0;
-  out.steer = { dHeading: +(st.heading - h0).toFixed(3), stillFast: st.v > 8 };
+  I.steer = 1; stepN(45);
+  const hRight = st.heading;
+  I.steer = 0; stepN(30);
+  out.steerRight = { dH: +(hRight - h0).toFixed(3), correct: hRight < h0 };
+  // LEFT input must curve the other way
+  I.steer = -1; stepN(45);
+  const hLeft = st.heading;
+  I.steer = 0;
+  out.steerLeft = { dH: +(hLeft - hRight).toFixed(3), correct: hLeft > hRight };
+  const stillFast = st.v > 8;
 
   // 3) brake 1.5s
   I.throttle = 0; I.brake = 1; stepN(90);
@@ -54,7 +62,7 @@ const res = await page.evaluate(() => {
 console.log(JSON.stringify(res, null, 1));
 console.log('\nCHECKS:',
   'accel→12:', res.accel.v === 12, '| dist~35m:', res.accel.dist > 25 && res.accel.dist < 45,
-  '| steering:', res.steer.dHeading < -0.2 && res.steer.stillFast,
+  '| steerRight→right:', res.steerRight.correct, '| steerLeft→left:', res.steerLeft.correct,
   '| brake→~0 (or deliberate reverse):', Math.abs(res.brake.v) < 4.5,
   '| water slow:', res.water.inWater && res.water.vTop < 3,
   '| dead→crawl:', res.dead.vCrawl < 2,

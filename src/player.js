@@ -269,9 +269,9 @@ export function createPlayer(world, scene) {
     s.v -= Math.sign(s.v) * Math.min(Math.abs(s.v), drag * dt);
     s.v = THREE.MathUtils.clamp(s.v, -RICK.reverseMax, effMax);
 
-    // bicycle turn
+    // bicycle turn (screen-correct: positive steer = RIGHT = clockwise on screen)
     if (Math.abs(s.v) > 0.04) {
-      s.heading += (s.v / RICK.wheelbase) * Math.tan(s.steerAngle) * dt;
+      s.heading -= (s.v / RICK.wheelbase) * Math.tan(s.steerAngle) * dt;
     }
 
     const px = s.x, pz = s.z;
@@ -303,7 +303,7 @@ export function createPlayer(world, scene) {
     W.rearL.rotation.x -= spin;
     W.rearR.rotation.x -= spin;
     W.front.rotation.x -= (s.v * dt) / 0.30;
-    W.fork.rotation.y = s.steerAngle * 0.9;
+    W.fork.rotation.y = -s.steerAngle * 0.9;
     W.crank.rotation.x -= Math.abs(spin) * 0.45;
 
     // lean into turns
