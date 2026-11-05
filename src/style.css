@@ -37,6 +37,47 @@ html, body {
 
 .hidden { display: none !important; }
 
+/* ---------- dashboard (speed + battery + message) ---------- */
+#dash {
+  display: flex; align-items: center; gap: 18px;
+  background: var(--panel); border: 1px solid rgba(255, 248, 231, 0.25);
+  border-radius: 10px; padding: 10px 16px; backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+#speedo { display: flex; align-items: baseline; gap: 6px; min-width: 110px; }
+#speedo #speed-val { font-size: 40px; font-weight: 800; color: var(--rickshaw-yellow); font-variant-numeric: tabular-nums; }
+#speedo .unit { font-size: 12px; letter-spacing: 0.18em; opacity: 0.75; }
+#battery-wrap { display: flex; flex-direction: column; gap: 4px; width: min(220px, 26vw); }
+#battery-label { font-size: 10px; letter-spacing: 0.22em; opacity: 0.75; }
+#battery-track { height: 12px; border: 2px solid rgba(255, 248, 231, 0.7); border-radius: 7px; overflow: hidden; }
+#battery-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #35d07f, #a8e063); transition: width 0.25s; }
+#battery-bar.low { background: linear-gradient(90deg, #d7263d, #ff6b35); }
+#dash-msg { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; color: var(--rickshaw-yellow); min-width: 130px; }
+
+/* ---------- touch controls ---------- */
+#touch-ui {
+  position: fixed; inset: 0; z-index: 20; pointer-events: none;
+  display: none;
+}
+@media (pointer: coarse) { #touch-ui { display: block; } }
+.tc { position: absolute; bottom: 18px; display: flex; gap: 12px; align-items: flex-end; }
+.tc-left { left: 18px; }
+.tc-right { right: 18px; }
+.tbtn {
+  pointer-events: auto;
+  width: 74px; height: 74px; border-radius: 50%;
+  border: 2px solid rgba(255, 248, 231, 0.65);
+  background: rgba(10, 14, 12, 0.55); color: var(--text);
+  font: 700 13px/1 'Noto Sans', sans-serif; letter-spacing: 0.08em;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: none; -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(3px);
+}
+.tbtn svg { width: 34px; height: 34px; }
+.tbtn.big { width: 92px; height: 92px; font-size: 15px; background: rgba(0, 105, 78, 0.6); }
+.tbtn.small { width: 60px; height: 60px; font-size: 11px; }
+.tbtn.active { background: rgba(255, 207, 63, 0.75); color: #10241d; border-color: var(--rickshaw-yellow); }
+
 /* ---------- HUD ---------- */
 #hud {
   position: fixed; inset: 0; z-index: 10; pointer-events: none;
