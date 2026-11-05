@@ -1,0 +1,59 @@
+/* Rickshaw Mama — game-first styles: full-bleed canvas, no page chrome, no emoji */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --green: #00694e;
+  --green-dark: #004d3a;
+  --rickshaw-yellow: #ffcf3f;
+  --text: #fff8e7;
+  --panel: rgba(10, 14, 12, 0.82);
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0a0e0c;
+  font-family: 'Noto Sans Bengali', 'Noto Sans', system-ui, sans-serif;
+  color: var(--text);
+  -webkit-user-select: none; user-select: none;
+  touch-action: none;
+}
+
+#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ---------- loading ---------- */
+#loading {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; background:
+    radial-gradient(ellipse at 50% 30%, rgba(0, 105, 78, 0.35), transparent 60%),
+    linear-gradient(180deg, #0a0e0c 0%, #10241d 100%);
+}
+.loading-title { font-size: clamp(34px, 8vw, 64px); font-weight: 800; color: var(--rickshaw-yellow); text-shadow: 0 3px 0 var(--green-dark); }
+.loading-sub { font-size: clamp(12px, 2.4vw, 18px); letter-spacing: 0.35em; opacity: 0.85; }
+.loading-bar { width: min(60vw, 420px); height: 10px; border: 2px solid var(--text); border-radius: 6px; overflow: hidden; }
+#loading-fill { width: 0%; height: 100%; background: linear-gradient(90deg, var(--green), var(--rickshaw-yellow)); transition: width 0.2s; }
+#loading-status { font-size: 13px; opacity: 0.7; }
+
+.hidden { display: none !important; }
+
+/* ---------- HUD ---------- */
+#hud {
+  position: fixed; inset: 0; z-index: 10; pointer-events: none;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 12px 16px;
+}
+#hud-top, #hud-bottom {
+  background: var(--panel); border: 1px solid rgba(255, 248, 231, 0.25);
+  border-radius: 8px; padding: 8px 12px;
+  font-size: 13px; letter-spacing: 0.06em; backdrop-filter: blur(4px);
+}
+#hud-bottom b { color: var(--rickshaw-yellow); }
+
+/* portrait rotate overlay (landscape-first game) */
+#rotate-hint {
+  position: fixed; inset: 0; z-index: 100; display: none;
+  align-items: center; justify-content: center; text-align: center;
+  background: rgba(6, 9, 8, 0.94); font-size: 20px; line-height: 1.6;
+}
+@media (orientation: portrait) { #rotate-hint { display: flex; } }
