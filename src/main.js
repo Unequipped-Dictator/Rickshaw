@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { loadTexture, loadHDRI, loadAllModels } from './assets.js';
 import { buildWorld, WORLD_MODELS } from './world.js';
 import { createPlayer, RICK } from './player.js';
+import { initTraffic } from './traffic.js';
 import { input, bindTouch } from './input.js';
 import './style.css';
 
@@ -82,10 +83,14 @@ try {
   window.__rick = player.state;   // QA hook
   window.__player = player;       // QA hook (deterministic physics tests)
 
+  setProgress(0.99, 'waking up traffic…');
+  const traffic = initTraffic(world, scene, assets, player);
+  window.__traffic = traffic;     // QA hook
+
   el('loading').classList.add('hidden');
   el('hud').classList.remove('hidden');
-  el('hud-top').textContent = 'R2 — RIDEABLE · WASD/arrows drive · SPACE horn · GAS/BRAKE on touch';
-  el('hud-bottom').innerHTML = `city: <b>${world.info.instances}</b> instances / ${world.info.instancedMeshes} meshes — find the green beacon to recharge`;
+  el('hud-top').textContent = 'R3 — TRAFFIC · drive with WASD · SPACE honks (peds jump!)';
+  el('hud-bottom').innerHTML = `city: <b>${world.info.instances}</b> instances · traffic: <b>${traffic.cars.length}</b> cars · <b>${traffic.peds.length}</b> peds — green beacon recharges`;
 
   const speedVal = el('speed-val'), batBar = el('battery-bar'), msg = el('dash-msg');
 
@@ -112,6 +117,8 @@ try {
 
   updateCamera(0, true);
 
+  const flash = el('flash');
+  let flashTimer = 0;
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.05);
@@ -120,6 +127,16 @@ try {
     player.sync(dt);
     s.position.set(s.x, 0, s.z);
     updateCamera(dt);
+
+    // traffic + honk + crash events
+    const evs = traffic.update(dt, input.horn);
+    for (const e of evs) {
+      if (e.impact > 4) { flash.classList.add('on'); flashTimer = 0.35; }
+    }
+    if (flashTimer > 0) {
+      flashTimer -= dt;
+      if (flashTimer <= 0) flash.classList.remove('on');
+    }
 
     // shadow frustum follows the player
     sun.position.set(s.x + 40, 70, s.z + 28);
@@ -134,7 +151,8 @@ try {
     msg.textContent = s.recharging && pct < 99.9 ? 'RECHARGING…' :
       pct <= 0 ? 'BATTERY DEAD — MANUAL MODE (good luck)' :
       pct < 25 ? 'LOW BATTERY' :
-      s.inWater ? 'WATER — 5x SLOW' : '';
+      s.inWater ? 'WATER — 5x SLOW' :
+      flashTimer > 0 ? 'ARRE BABA!' : '';
 
     renderer.render(scene, camera);
   });

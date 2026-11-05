@@ -37,6 +37,14 @@ html, body {
 
 .hidden { display: none !important; }
 
+/* ---------- crash flash ---------- */
+#flash {
+  position: fixed; inset: 0; z-index: 15; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(215, 38, 61, 0.55) 100%);
+  opacity: 0; transition: opacity 0.5s;
+}
+#flash.on { opacity: 1; transition: opacity 0.06s; }
+
 /* ---------- dashboard: compact cluster pinned TOP-LEFT, never mid-screen ---------- */
 #dash {
   display: flex; align-items: center; gap: clamp(8px, 1.6vh, 14px);
