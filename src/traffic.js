@@ -1,10 +1,9 @@
 /**
- * traffic.js — AI cars + pedestrians (R3).
+ * traffic.js — AI cars + pedestrians (R3.5: irregular road network).
  *
- * Cars: 14, left-hand traffic (Dhaka), drive the road grid, turn at
- * intersections, brake for cars/player ahead. ~2 draw calls per car.
- * Peds: 16, patrol sidewalk rings around blocks; honking makes nearby
- * ones jump aside (the core joke mechanic — feed it, it's funny).
+ * Cars: 14, left-hand traffic (Dhaka), drive ROAD_X/ROAD_Z lines, turn at
+ * intersections, brake for obstacles ahead. Peds: 16, patrol sidewalk rings
+ * (rings sized to each block). Honking makes nearby peds jump aside.
  *
  * Emits gameplay events for the R4 tribunal:
  *   { type: 'car'|'ped', impact, x, z, t }
@@ -12,32 +11,25 @@
 import * as THREE from 'three';
 import { fitModel } from './assets.js';
 
-const LANE_OFFSET = 3.5;      // left-lane center offset from road centerline
-const CAR_SPEED = [5.5, 8.5]; // m/s cruise range
+const LANE_OFFSET = 3.5;
+const CAR_SPEED = [5.5, 8.5];
 const CAR_RADIUS = 1.5;
 
-// ---------- helpers ----------
-const lineAt = (i, spacing, half) => i * spacing - half;
-
-/** left-hand-side lane position for a travel direction */
-function laneTarget(ix, iz, dir, grid) {
-  // dir: {dx, dz} unit axis; travel along vertical road (dx=0) or horizontal (dz=0)
-  const L = grid.lines, S = grid.spacing, H = grid.half;
-  let x, z;
-  if (dir.dx !== 0) {
-    // horizontal road at z = lineAt(iz)
-    z = lineAt(iz, S, H) + (dir.dx > 0 ? LANE_OFFSET : -LANE_OFFSET); // left of travel
-    x = null; // free along x
-  } else {
-    x = lineAt(ix, S, H) + (dir.dz > 0 ? -LANE_OFFSET : LANE_OFFSET);
-    z = null;
-  }
-  return { x, z };
-}
-
 export function initTraffic(world, scene, assets, player) {
-  const grid = { lines: 7, spacing: 64, half: 192 };
-  const rng = Math.random;
+  const RX = world.ROAD_X, RZ = world.ROAD_Z, RH = world.ROAD_HALF;
+  const X0 = RX[0], X1 = RX[RX.length - 1];
+  const Z0 = RZ[0], Z1 = RZ[RZ.length - 1];
+  const nearest = (arr, v) => {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < arr.length; i++) { const d = Math.abs(arr[i] - v); if (d < bd) { bd = d; bi = i; } }
+    return bi;
+  };
+
+  /** left-hand lane cross position for travel dir on road line li */
+  function laneCross(vertical, li, dir) {
+    if (vertical) return RX[li] + (dir.dz > 0 ? -LANE_OFFSET : LANE_OFFSET);
+    return RZ[li] + (dir.dx > 0 ? LANE_OFFSET : -LANE_OFFSET);
+  }
 
   // ---------- cars ----------
   const carKeys = ['car_taxi', 'car_sedan', 'car_suv', 'car_van', 'car_truck', 'car_police'];
@@ -46,86 +38,64 @@ export function initTraffic(world, scene, assets, player) {
     const key = carKeys[i % carKeys.length];
     if (!assets[key]) continue;
     const wrap = fitModel(assets[key], { size: 4.6, axis: 'length' });
-    // Kenney cars face +z after fit? verify by bounds; rotate to face +z forward
-    wrap.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+    wrap.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     scene.add(wrap);
 
-    const vertical = rng() < 0.5;
-    const line = 1 + Math.floor(rng() * (grid.lines - 2)); // inner lines mostly
+    const vertical = Math.random() < 0.5;
+    const line = 1 + Math.floor(Math.random() * (RX.length - 2));
     const dir = vertical
-      ? { dx: 0, dz: rng() < 0.5 ? 1 : -1 }
-      : { dx: rng() < 0.5 ? 1 : -1, dz: 0 };
-    const lane = laneTarget(vertical ? line : 0, vertical ? 0 : line, dir, grid);
+      ? { dx: 0, dz: Math.random() < 0.5 ? 1 : -1 }
+      : { dx: Math.random() < 0.5 ? 1 : -1, dz: 0 };
+    const cross = laneCross(vertical, line, dir);
+    const t = (Math.random() * 2 - 1) * 150;
 
-    const t = (rng() * 2 - 1) * grid.half;
     cars.push({
-      key, wrap,
-      dir, line, vertical,
-      x: vertical ? lane.x : t,
-      z: vertical ? t : lane.z,
+      key, wrap, dir, line, vertical,
+      x: vertical ? cross : t,
+      z: vertical ? t : cross,
       heading: Math.atan2(dir.dx, dir.dz),
-      v: CAR_SPEED[0], cruise: rng() * (CAR_SPEED[1] - CAR_SPEED[0]) + CAR_SPEED[0],
+      v: CAR_SPEED[0], cruise: Math.random() * (CAR_SPEED[1] - CAR_SPEED[0]) + CAR_SPEED[0],
       stopT: 0,
     });
   }
 
   function carAheadBlocked(car) {
     const fx = Math.sin(car.heading), fz = Math.cos(car.heading);
-    const px = car.x + fx * 6.2, pz = car.z + fz * 6.2; // point 6m ahead
-    // other cars
+    const px = car.x + fx * 6.2, pz = car.z + fz * 6.2;
     for (const o of cars) {
       if (o === car) continue;
       const dx = o.x - px, dz = o.z - pz;
       if (dx * dx + dz * dz < 3.4 * 3.4) return true;
     }
-    // player
     const dxp = player.state.x - px, dzp = player.state.z - pz;
     if (dxp * dxp + dzp * dzp < 3.0 * 3.0) return true;
     return false;
   }
 
-  /** at intersection center: maybe turn */
   function maybeTurn(car) {
-    const H = grid.half, S = grid.spacing;
-    const nearestIx = Math.round((car.x + H) / S);
-    const nearestIz = Math.round((car.z + H) / S);
-    const ix = Math.max(0, Math.min(grid.lines - 1, nearestIx));
-    const iz = Math.max(0, Math.min(grid.lines - 1, nearestIz));
-    const cx = lineAt(ix, S, H), cz = lineAt(iz, S, H);
+    const ix = nearest(RX, car.x), iz = nearest(RZ, car.z);
+    const cx = RX[ix], cz = RZ[iz];
+    if (Math.abs(car.x - cx) > 1.2 || Math.abs(car.z - cz) > 1.2) return;
 
-    const distToNode = car.vertical ? Math.abs(car.z - cz) : Math.abs(car.x - cx);
-    if (distToNode > 1.2) return;
-    // only decide once per node: check we are basically at the crossing center
-    if (Math.abs(car.x - cx) > 1.2 && Math.abs(car.z - cz) > 1.2) return;
-
-    const roll = rng();
     let ndir = car.dir;
-    if (roll < 0.25) {
-      // turn: perpendicular, keep inside grid
+    if (Math.random() < 0.25) {
       const opts = [{ dx: car.dir.dz, dz: car.dir.dx }, { dx: -car.dir.dz, dz: -car.dir.dx }];
       for (const o of opts) {
-        const nx = car.x + o.dx * S, nz = car.z + o.dz * S;
-        if (nx >= -H - 1 && nx <= H + 1 && nz >= -H - 1 && nz <= H + 1) { ndir = o; if (rng() < 0.55) break; }
+        const nx = car.x + o.dx * 60, nz = car.z + o.dz * 60;
+        if (nx >= X0 - 1 && nx <= X1 + 1 && nz >= Z0 - 1 && nz <= Z1 + 1) { ndir = o; if (Math.random() < 0.55) break; }
       }
     } else {
-      // straight: bail at grid edge
-      const nx = car.x + ndir.dx * S, nz = car.z + ndir.dz * S;
-      if (nx < -H - 1 || nx > H + 1 || nz < -H - 1 || nz > H + 1) {
+      const nx = car.x + ndir.dx * 60, nz = car.z + ndir.dz * 60;
+      if (nx < X0 - 1 || nx > X1 + 1 || nz < Z0 - 1 || nz > Z1 + 1) {
         ndir = { dx: -car.dir.dx, dz: -car.dir.dz };
       }
     }
     if (ndir !== car.dir) {
       car.dir = ndir;
-      const vertical = ndir.dx === 0;
-      // find the line we're on for the new axis
-      const lineIdx = vertical
-        ? Math.max(0, Math.min(grid.lines - 1, Math.round((car.x + H) / S)))
-        : Math.max(0, Math.min(grid.lines - 1, Math.round((car.z + H) / S)));
-      car.vertical = vertical;
-      car.line = lineIdx;
-      const lane = laneTarget(vertical ? lineIdx : 0, vertical ? 0 : lineIdx, ndir, grid);
-      // snap onto the new lane smoothly: set the cross-axis target via hard set (roads are wide)
-      if (vertical) car.x = lane.x; else car.z = lane.z;
+      car.vertical = ndir.dx === 0;
+      car.line = car.vertical ? nearest(RX, car.x) : nearest(RZ, car.z);
+      const cross = laneCross(car.vertical, car.line, ndir);
+      if (car.vertical) car.x = cross; else car.z = cross;
     }
   }
 
@@ -139,29 +109,28 @@ export function initTraffic(world, scene, assets, player) {
     wrap.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     scene.add(wrap);
 
-    const bx = Math.floor(rng() * 6), bz = Math.floor(rng() * 6);
-    peds.push({
-      key, wrap, bx, bz,
-      t: rng(),                       // perimeter param 0..1
-      speed: (0.55 + rng() * 0.5) * (rng() < 0.5 ? 1 : -1), // walk either way
-      jumpT: -1, jumpDirX: 0, jumpDirZ: 0,
-    });
+    const bx = Math.floor(Math.random() * 6), bz = Math.floor(Math.random() * 6);
+    peds.push({ key, wrap, bx, bz, t: Math.random(), speed: (0.55 + Math.random() * 0.5) * (Math.random() < 0.5 ? 1 : -1), jumpT: -1, jumpDirX: 0, jumpDirZ: 0 });
   }
 
-  const RING = 23.7; // sidewalk centerline distance from block center
+  /** sidewalk ring point for ped p (ring inset 1.3m from road edge, sized per block) */
   function pedPoint(p) {
-    const cx = lineAt(p.bx, 64, 192) + 32;
-    const cz = lineAt(p.bz, 64, 192) + 32;
-    const per = RING * 8;
-    let d = ((p.t % 1) + 1) % 1 * per; // distance along ring
-    const side = Math.floor(d / (RING * 2));
-    const f = (d - side * RING * 2) - RING;
+    const cx = (RX[p.bx] + RX[p.bx + 1]) / 2;
+    const cz = (RZ[p.bz] + RZ[p.bz + 1]) / 2;
+    const rx = (RX[p.bx + 1] - RX[p.bx]) / 2 - 1.3;
+    const rz = (RZ[p.bz + 1] - RZ[p.bz]) / 2 - 1.3;
+    const per = 2 * (rx + rz) * 2 / 2 * 2; // 2*(2rx+2rz) simplified below
+    const PER = 2 * (2 * rx + 2 * rz);
+    let d = (((p.t % 1) + 1) % 1) * PER;
+    const segLen = [2 * rx, 2 * rz, 2 * rx, 2 * rz];
+    let seg = 0;
+    while (d > segLen[seg]) { d -= segLen[seg]; seg = (seg + 1) % 4; }
     let x, z, ang;
-    switch (side) {
-      case 0: x = cx + f; z = cz - RING; ang = Math.PI / 2; break;
-      case 1: x = cx + RING; z = cz + f; ang = 0; break;
-      case 2: x = cx - f; z = cz + RING; ang = -Math.PI / 2; break;
-      default: x = cx - RING; z = cz - f; ang = Math.PI; break;
+    switch (seg) {
+      case 0: x = cx - rx + d; z = cz - rz; ang = Math.PI / 2; break;
+      case 1: x = cx + rx; z = cz - rz + d; ang = 0; break;
+      case 2: x = cx + rx - d; z = cz + rz; ang = -Math.PI / 2; break;
+      default: x = cx - rx; z = cz + rz - d; ang = Math.PI; break;
     }
     if (p.speed < 0) ang += Math.PI;
     return { x, z, ang };
@@ -180,7 +149,6 @@ export function initTraffic(world, scene, assets, player) {
   function update(dt, honkPressed) {
     const ps = player.state;
 
-    // honk edge with cooldown
     honkCooldown -= dt;
     const honkNow = honkPressed && honkCooldown <= 0;
     if (honkNow) honkCooldown = 0.5;
@@ -198,11 +166,9 @@ export function initTraffic(world, scene, assets, player) {
       car.heading = Math.atan2(car.dir.dx, car.dir.dz);
       maybeTurn(car);
 
-      // keep on grid
-      car.x = THREE.MathUtils.clamp(car.x, -196, 196);
-      car.z = THREE.MathUtils.clamp(car.z, -196, 196);
+      car.x = THREE.MathUtils.clamp(car.x, X0 - 4, X1 + 4);
+      car.z = THREE.MathUtils.clamp(car.z, Z0 - 4, Z1 + 4);
 
-      // wheel-ish bob (no wheel refs on clones; tiny body roll by speed)
       car.wrap.position.set(car.x, 0, car.z);
       car.wrap.rotation.y = car.heading;
 
@@ -214,7 +180,6 @@ export function initTraffic(world, scene, assets, player) {
         const d = Math.sqrt(d2);
         const nx = dx / d, nz = dz / d;
         const relSpeed = Math.max(Math.abs(ps.v), car.v);
-        // separate: push player out
         ps.x = car.x + nx * rr;
         ps.z = car.z + nz * rr;
         if (relSpeed > 2.5) {
@@ -222,7 +187,7 @@ export function initTraffic(world, scene, assets, player) {
           emit({ type: 'car', impact: relSpeed, x: ps.x, z: ps.z });
         }
         ps.v *= -0.35;
-        car.stopT = 1.1; // the AI driver stops in disbelief
+        car.stopT = 1.1;
       }
     }
 
@@ -231,7 +196,6 @@ export function initTraffic(world, scene, assets, player) {
       p.t += (p.speed * 0.011) * dt;
       const pt = pedPoint(p);
 
-      // honk reaction
       if (honkNow) {
         const dx = pt.x - ps.x, dz = pt.z - ps.z;
         const d2 = dx * dx + dz * dz;
@@ -247,26 +211,24 @@ export function initTraffic(world, scene, assets, player) {
       if (p.jumpT >= 0) {
         p.jumpT += dt;
         const J = 0.65;
-        if (p.jumpT >= J) { p.jumpT = -1; }
+        if (p.jumpT >= J) { p.jumpT = -1; p.hitEmitted = false; }
         else {
-          const k = Math.sin((p.jumpT / J) * Math.PI); // out-and-back
+          const k = Math.sin((p.jumpT / J) * Math.PI);
           jx = p.jumpDirX * 1.5 * k;
           jz = p.jumpDirZ * 1.5 * k;
           jy = 0.45 * Math.sin((p.jumpT / J) * Math.PI * 2) ** 2;
-          // landing: emit ped event once, at the apex-ish
           if (!p.hitEmitted && p.jumpT > J * 0.5) {
             const ddx = pt.x - ps.x, ddz = pt.z - ps.z;
             if (ddx * ddx + ddz * ddz < 2.2 * 2.2 && Math.abs(ps.v) > 2) {
               emit({ type: 'ped', impact: Math.abs(ps.v), x: pt.x, z: pt.z });
+              p.hitEmitted = true;
             }
-            p.hitEmitted = p.jumpT < J; // reset on next jump
           }
         }
       }
 
       p.wrap.position.set(pt.x + jx, jy, pt.z + jz);
       p.wrap.rotation.y = pt.ang;
-      // subtle walk bob
       if (p.jumpT < 0) p.wrap.position.y = Math.abs(Math.sin(p.t * 34)) * 0.045;
     }
 

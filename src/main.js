@@ -78,6 +78,17 @@ try {
   const world = buildWorld(scene, assets, { asphaltTex });
   window.__world = world; // QA hook
 
+  // QA override: ?cam=x,y,z&look=x,z (static camera, chase cam disabled)
+  var qaStatic = null;
+  {
+    const qp = new URLSearchParams(location.search);
+    if (qp.get('cam')) {
+      const [x, y, z] = qp.get('cam').split(',').map(Number);
+      const [lx, ly, lz] = (qp.get('look') || '0,0,0').split(',').map(Number);
+      qaStatic = { pos: new THREE.Vector3(x, y, z), tgt: new THREE.Vector3(lx, ly, lz) };
+    }
+  }
+
   setProgress(0.97, 'assembling rickshaw…');
   const player = createPlayer(world, scene);
   window.__rick = player.state;   // QA hook
@@ -116,6 +127,7 @@ try {
   player.state.position = new THREE.Vector3(player.state.x, 0, player.state.z);
 
   updateCamera(0, true);
+  if (qaStatic) { camera.position.copy(qaStatic.pos); camera.lookAt(qaStatic.tgt); }
 
   const flash = el('flash');
   let flashTimer = 0;
@@ -126,7 +138,8 @@ try {
     player.step(dt, input);
     player.sync(dt);
     s.position.set(s.x, 0, s.z);
-    updateCamera(dt);
+    if (qaStatic) { camera.position.copy(qaStatic.pos); camera.lookAt(qaStatic.tgt); }
+    else updateCamera(dt);
 
     // traffic + honk + crash events
     const evs = traffic.update(dt, input.horn);

@@ -44,7 +44,7 @@ const PACKS = [
   },
   {
     slug: 'city-kit-roads', out: 'props', prefix: 'road_',
-    keep: /^(traffic-light|traffic-light-hanging|light-curved|light-square|electricity-pole|electricity-pole-single|electricity-pole-wide|electricity-wires|sign-highway|sign-highway-wide|road-sign-(empty|stop|street|warning)|dumpster|construction-(barrier|cone|fence)|bridge-pillar|bridge-pillar-wide|road-crossing)$/,
+    keep: /^(traffic-light|traffic-light-hanging|light-curved|light-square|electricity-pole|electricity-pole-single|electricity-pole-wide|electricity-wires|electricity-wires-wide|sign-highway|sign-highway-wide|road-sign-(empty|stop|street|warning)|dumpster|construction-(barrier|cone|fence)|bridge-pillar|bridge-pillar-wide|road-bridge|road-straight|road-crossroad)$/,
   },
   {
     slug: 'nature-kit', out: 'nature', prefix: 'nat_',

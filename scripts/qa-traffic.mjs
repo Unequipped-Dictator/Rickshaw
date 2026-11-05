@@ -11,8 +11,8 @@ const res = await page.evaluate(() => {
   const st = P.state;
   const out = {};
 
-  // 1) cars move + lane keeping
-  const S = 64, H = 192;
+  // 1) cars move + lane keeping (distance to nearest road centerline)
+  const RX = W.ROAD_X, RZ = W.ROAD_Z;
   const x0 = T.cars.map((c) => ({ x: c.x, z: c.z, h: c.heading }));
   const stepN = (n) => { for (let i = 0; i < n; i++) T.update(1 / 60, false); };
   stepN(300); // 5s
@@ -21,9 +21,10 @@ const res = await page.evaluate(() => {
     const sp = Math.hypot(c.x - x0[i].x, c.z - x0[i].z);
     if (sp > 2) moving++;
     if (c.heading !== x0[i].h) turned++;
+    const arr = c.vertical ? RX : RZ;
     const fixed = c.vertical ? c.x : c.z;
-    const rel = ((fixed + H) % S + S) % S;
-    const dLine = Math.min(rel, S - rel);
+    let dLine = Infinity;
+    for (const rl of arr) dLine = Math.min(dLine, Math.abs(fixed - rl));
     if (dLine < 4.2) onLane++;  // lane center sits 3.5 off the centerline
   });
   out.cars = { total: T.cars.length, moving, turned, onLane };
@@ -61,13 +62,13 @@ const res = await page.evaluate(() => {
   }
   out.collide = { braked, gap: +gap.toFixed(1), hit, crashedAt: +st.crashed.toFixed(1) };
 
-  // 4) peds on sidewalks: check ring distance for all peds
+  // 4) peds on sidewalks: check ring distance for all peds (per-block ring)
   let onRing = 0;
   for (const p of T.peds) {
-    const cx = ((p.bx * S) - H) + 32, cz = ((p.bz * S) - H) + 32;
+    const cx = (RX[p.bx] + RX[p.bx+1]) / 2, cz = (RZ[p.bz] + RZ[p.bz+1]) / 2;
+    const rx = (RX[p.bx+1] - RX[p.bx]) / 2 - 1.3, rz = (RZ[p.bz+1] - RZ[p.bz]) / 2 - 1.3;
     const dx = Math.abs(p.wrap.position.x - cx), dz = Math.abs(p.wrap.position.z - cz);
-    const ringDist = Math.max(Math.abs(dx - 23.7), Math.abs(dz - 23.7), Math.min(Math.abs(dx - 23.7), Math.abs(dz - 23.7)));
-    const approx = (Math.abs(dx - 23.7) < 1.5 || Math.abs(dz - 23.7) < 1.5) && dx < 25 && dz < 25;
+    const approx = (Math.abs(dx - rx) < 2.0 && dz < rz + 2) || (Math.abs(dz - rz) < 2.0 && dx < rx + 2);
     if (approx) onRing++;
   }
   out.peds = { total: T.peds.length, onRing };

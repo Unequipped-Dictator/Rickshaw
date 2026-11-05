@@ -40,7 +40,7 @@ const res = await page.evaluate(() => {
   out.water = { inWater: st.inWater, vTop: +st.v.toFixed(2) }; // expect inWater, v ~2.4 (12*0.2)
 
   // 5) battery death: drain to 0 then try throttle
-  st.battery = 0.05; st.x = 0; st.z = 190.5; st.v = 0; // middle of a road, no water
+  st.battery = 0.05; st.x = -40; st.z = W.ROAD_Z[W.ROAD_Z.length-1]; st.v = 0; // on the southern road, no water
   stepN(30); // drains in ~0.5s
   const vDead = (() => { I.throttle = 1; stepN(300); return st.v; })();
   out.dead = { battery: +st.battery.toFixed(2), vCrawl: +Math.abs(vDead).toFixed(2) }; // expect v <= ~1.7

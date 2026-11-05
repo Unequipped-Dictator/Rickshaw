@@ -98,25 +98,37 @@ export function extractPrims(wrap) {
 
 /**
  * One InstancedMesh per primitive for all placements of a species.
- * @param placements: Array<{x, z, ry, s}> (s = uniform scale, default 1)
+ * @param placements: Array<{x, z, ry, s, tint?, tiltZ?, tiltX?}>
+ *   tint: hex color multiplier (instance color), tilts in radians.
  */
 export function instancedPlacements(prims, placements, { castShadow = true, receiveShadow = true } = {}) {
   const meshes = [];
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
+  const qTilt = new THREE.Quaternion();
   const pos = new THREE.Vector3();
   const scl = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
+  const col = new THREE.Color();
+  const needsColor = placements.some((p) => p.tint != null);
   for (const { geometry, material } of prims) {
     const mesh = new THREE.InstancedMesh(geometry, material, placements.length);
     placements.forEach((p, i) => {
       q.setFromAxisAngle(up, p.ry || 0);
+      if (p.tiltZ || p.tiltX) {
+        qTilt.setFromEuler(new THREE.Euler(p.tiltX || 0, 0, p.tiltZ || 0));
+        q.multiply(qTilt);
+      }
       pos.set(p.x, p.y || 0, p.z);
       const s = p.s ?? 1;
       scl.set(s, s, s);
       mesh.setMatrixAt(i, m.compose(pos, q, scl));
+      if (needsColor) {
+        mesh.setColorAt(i, col.set(p.tint != null ? p.tint : 0xffffff));
+      }
     });
     mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.castShadow = castShadow;
     mesh.receiveShadow = receiveShadow;
     meshes.push(mesh);
