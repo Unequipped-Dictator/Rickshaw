@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { fitModel } from './assets.js';
 
-const LANE_OFFSET = 3.5;
+const LANE_OFFSET = 3.1;
 const CAR_SPEED = [5.5, 8.5];
 const CAR_RADIUS = 1.5;
 

@@ -120,8 +120,8 @@ export function instancedPlacements(prims, placements, { castShadow = true, rece
         q.multiply(qTilt);
       }
       pos.set(p.x, p.y || 0, p.z);
-      const s = p.s ?? 1;
-      scl.set(s, s, s);
+      const sc = p.s ?? 1;
+      scl.set(sc, sc * (p.sy || 1), sc);
       mesh.setMatrixAt(i, m.compose(pos, q, scl));
       if (needsColor) {
         mesh.setColorAt(i, col.set(p.tint != null ? p.tint : 0xffffff));

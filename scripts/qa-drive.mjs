@@ -1,7 +1,7 @@
 /** QA drive test — loads the game, holds throttle, verifies physics/HUD/camera. */
 import { chromium } from 'playwright';
 
-const URL = process.env.QA_URL || 'http://localhost:5174/?lite';
+const URL = process.env.QA_URL || 'http://localhost:5173/?lite';
 const OUT = process.env.QA_OUT || '/tmp/drive.png';
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });

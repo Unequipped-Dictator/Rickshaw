@@ -20,7 +20,7 @@ import { buildRickshaw } from './player.js';
 // ---------- irregular road network ----------
 export const ROAD_X = [-190, -126, -70, -4, 66, 130, 190];
 export const ROAD_Z = [-188, -120, -66, 0, 72, 126, 188];
-export const ROAD_HALF = 7;
+export const ROAD_HALF = 6;
 
 export const lineX = (i) => ROAD_X[i];
 export const lineZ = (i) => ROAD_Z[i];
@@ -249,6 +249,29 @@ function teaStall() {
   return mergedGroup(p);
 }
 
+function wallSegment(tin = false) {
+  const p = [];
+  const H = 2.35, L = 7.6, T = 0.22;
+  if (tin) {
+    const sheet = new THREE.BoxGeometry(L, H, 0.06);
+    sheet.translate(0, H / 2, 0);
+    p.push({ geom: sheet, mat: TIN });
+    for (const x of [-L / 2 + 0.2, L / 2 - 0.2]) {
+      const post = new THREE.BoxGeometry(0.12, H + 0.25, 0.12);
+      post.translate(x, (H + 0.25) / 2, 0);
+      p.push({ geom: post, mat: WOOD });
+    }
+  } else {
+    const body = new THREE.BoxGeometry(L, H, T);
+    body.translate(0, H / 2, 0);
+    p.push({ geom: body, mat: CONCRETE });
+    const cap = new THREE.BoxGeometry(L + 0.12, 0.16, T + 0.14);
+    cap.translate(0, H + 0.08, 0);
+    p.push({ geom: cap, mat: CONCRETE });
+  }
+  return mergedGroup(p);
+}
+
 function rubble() {
   const p = [];
   const n = 6 + Math.floor(_rnd() * 4);
@@ -408,6 +431,8 @@ const PROC = {
   tea_stall: teaStall,
   rubble,
   const_frame: constructionFrame,
+  wall_conc: () => wallSegment(false),
+  wall_tin: () => wallSegment(true),
   shapla,
   fort_pavilion: fortPavilion,
   coach: railCoach,
@@ -455,7 +480,7 @@ export function buildWorld(scene, assets, { asphaltTex }) {
       else if (o.len != null) scale = o.len / Math.max(sp.w, sp.d);
       else scale = 1;
     }
-    const rec = { x, z, ry: o.ry || 0, s: scale, tint: o.tint, tiltZ: o.tiltZ || 0, tiltX: o.tiltX || 0 };
+    const rec = { x, z, ry: o.ry || 0, s: scale, sy: o.sy || 1, tint: o.tint, tiltZ: o.tiltZ || 0, tiltX: o.tiltX || 0 };
     (placements[key] ??= []).push(rec);
     if (o.collider) {
       const cy = Math.abs(Math.cos(o.ry || 0)), sy = Math.abs(Math.sin(o.ry || 0));
@@ -782,11 +807,14 @@ export function buildWorld(scene, assets, { asphaltTex }) {
         const key = pick(conf.models);
         const isRuin = conf.ruin && _rnd() < conf.ruin;
 
-        // footprint fit: species base footprint must fit the lot with alley margins
+        // footprint fit: fill the lot aggressively, leave only alley slivers
         const sp = prepare(key);
         const baseW = sp ? sp.w : 3, baseD = sp ? sp.d : 3;
-        const margin = conf.market || conf.bazaar ? 1.6 : 2.2;
-        const fitScale = Math.min((cw - margin * 2) / Math.max(baseW, 0.6), (cd - margin * 2) / Math.max(baseD, 0.6), 3.5);
+        const margin = conf.market || conf.bazaar ? 0.9 : 1.25;
+        const fitScale = Math.min((cw - margin * 2) / Math.max(baseW, 0.6), (cd - margin * 2) / Math.max(baseD, 0.6), 7.0);
+        // height target achieved by Y stretch (buildings loom, footprints stay max)
+        const targetH = rnd(conf.h[0], conf.h[1]) * 1.35;
+        const sy = sp && sp.h > 0.3 ? THREE.MathUtils.clamp(targetH / (sp.h * fitScale), 0.75, 3.6) : 1;
 
         if (isRuin) {
           if (_rnd() < 0.35) {
@@ -795,14 +823,14 @@ export function buildWorld(scene, assets, { asphaltTex }) {
             place('const_frame', lx, lz, { s: fs, ry: rnd(-0.15, 0.15), collider: true });
             place('rubble', lx + rnd(-2, 2), lz + rnd(-2, 2), { s: rnd(0.8, 1.3), ry: rnd(0, 3.14), collider: true, kind: 'prop' });
           } else {
-            const rec = place(key, lx, lz, { s: fitScale, ry: rnd(-0.15, 0.15), tint: pick([0x6a6a66, 0x7d746a, 0x5c5a58]), tiltZ: rnd(0.03, 0.09) * (_rnd() < 0.5 ? -1 : 1), collider: true });
+            const rec = place(key, lx, lz, { s: fitScale, sy, ry: rnd(-0.15, 0.15), tint: pick([0x6a6a66, 0x7d746a, 0x5c5a58]), tiltZ: rnd(0.03, 0.09) * (_rnd() < 0.5 ? -1 : 1), collider: true });
             if (rec && _rnd() < 0.5) place('rubble', lx + rnd(-3, 3), lz + rnd(-3, 3), { s: rnd(0.7, 1.2), ry: rnd(0, 3.14), collider: true, kind: 'prop' });
           }
           continue;
         }
 
         const tintShade = _rnd() < 0.75 ? new THREE.Color(1, 1, 1).offsetHSL(0, 0, rnd(-0.075, 0.04)) : null;
-        const rec = place(key, lx, lz, { s: fitScale, ry: rnd(-0.12, 0.12), tint: tintShade ? tintShade.getHex() : null, collider: true });
+        const rec = place(key, lx, lz, { s: fitScale, sy, ry: rnd(-0.12, 0.12), tint: tintShade ? tintShade.getHex() : null, collider: true });
         if (rec && conf.signs && _rnd() < 0.4) {
           signSlots.push({ x: lx, z: lz, ry: rnd(0, 6.28), sign: pick(SIGN_DEFS) });
         }
@@ -825,8 +853,47 @@ export function buildWorld(scene, assets, { asphaltTex }) {
         if (Math.hypot(lx - cx, lz - cz) < rClear + Math.max(cw, cd) / 2) continue;
         const key = pick(conf.models);
         const sp = prepare(key);
-        const fitScale = Math.min((cw - 4) / Math.max(sp ? sp.w : 3, 0.6), (cd - 4) / Math.max(sp ? sp.d : 3, 0.6), 3);
-        place(key, lx, lz, { s: fitScale, ry: rnd(-0.12, 0.12), tint: new THREE.Color(1, 1, 1).offsetHSL(0, 0, rnd(-0.06, 0.03)).getHex(), collider: true });
+        const fitScale = Math.min((cw - 3) / Math.max(sp ? sp.w : 3, 0.6), (cd - 3) / Math.max(sp ? sp.d : 3, 0.6), 6);
+        const sy = sp && sp.h > 0.3 ? THREE.MathUtils.clamp(rnd(conf.h[0], conf.h[1]) * 1.3 / (sp.h * fitScale), 0.75, 3.4) : 1;
+        place(key, lx, lz, { s: fitScale, sy, ry: rnd(-0.12, 0.12), tint: new THREE.Color(1, 1, 1).offsetHSL(0, 0, rnd(-0.06, 0.03)).getHex(), collider: true });
+      }
+    }
+  }
+
+  // ===== compound walls: the Dhaka street canyon =====
+  {
+    const washes = [0xd9d3c2, 0x9db8c9, 0xd9a9a0, 0xbfd0a8, 0xd8c48e, 0xc9c9c9];
+    for (let bx = 0; bx < 6; bx++) {
+      for (let bz = 0; bz < 6; bz++) {
+        const type = BLOCK_MAP[bz][bx];
+        if (type === 'water' || type === 'park') continue;
+        if (type === 'lalbagh' || type === 'depot' || type === 'kamalapur') continue; // have their own structures
+        const cx = blockCX(bx), cz = blockCZ(bz);
+        const W = blockW(bx), D = blockD(bz);
+        const conf = POOLS[type];
+        const wallH = conf.motijheel ? 2.8 : 2.35;
+        const inset = 0.55;
+        const key = _rnd() < 0.22 ? 'wall_tin' : 'wall_conc';
+        // horizontal runs (north & south edges)
+        for (const side of [-1, 1]) {
+          const z = cz + side * (D / 2 - inset);
+          const n = Math.floor((W - 3) / 7.8);
+          for (let k = 0; k < n; k++) {
+            if (_rnd() < 0.18) continue; // gate / alley gap
+            const x = cx - W/2 + 4 + k * 7.8;
+            place(key, x, z, { ry: side > 0 ? 0 : Math.PI, h: wallH, tint: pick(washes), collider: true, kind: 'wall' });
+          }
+        }
+        // vertical runs (east & west edges)
+        for (const side of [-1, 1]) {
+          const x = cx + side * (W / 2 - inset);
+          const n = Math.floor((D - 3) / 7.8);
+          for (let k = 0; k < n; k++) {
+            if (_rnd() < 0.18) continue;
+            const z = cz - D/2 + 4 + k * 7.8;
+            place(key, x, z, { ry: side > 0 ? Math.PI / 2 : -Math.PI / 2, h: wallH, tint: pick(washes), collider: true, kind: 'wall' });
+          }
+        }
       }
     }
   }
@@ -842,7 +909,7 @@ export function buildWorld(scene, assets, { asphaltTex }) {
     for (let iz = 0; iz < ROAD_Z.length; iz++) {
       if ((ix * 5 + iz * 3) % 4 !== 0) continue;
       const s1 = _rnd() < 0.5 ? 1 : -1, s2 = _rnd() < 0.5 ? 1 : -1;
-      place('tea_stall', ROAD_X[ix] + s1 * 9.2, ROAD_Z[iz] + s2 * 9.2, { ry: rnd(0, 6.28), collider: true, kind: 'prop' });
+      place('tea_stall', ROAD_X[ix] + s1 * 8.4, ROAD_Z[iz] + s2 * 8.4, { ry: rnd(0, 6.28), collider: true, kind: 'prop' });
       if (_rnd() < 0.4) place('rickshaw', ROAD_X[ix] - s1 * 6.4, ROAD_Z[iz] + s2 * 11.5, { ry: rnd(0, 6.28) });
     }
   }
@@ -851,7 +918,7 @@ export function buildWorld(scene, assets, { asphaltTex }) {
     const vertical = _rnd() < 0.5;
     const li = 1 + Math.floor(_rnd() * 5);
     const t = rnd(-160, 160);
-    const off = (i % 2 ? 5.6 : -5.6);
+    const off = (i % 2 ? 4.6 : -4.6);
     const n = 2 + Math.floor(_rnd() * 3);
     for (let k = 0; k < n; k++) {
       const x = vertical ? lineX(li) + off : t + k * 1.75;
@@ -865,7 +932,7 @@ export function buildWorld(scene, assets, { asphaltTex }) {
   for (let ix = 0; ix < ROAD_X.length; ix++) {
     for (let iz = 0; iz < ROAD_Z.length; iz++) {
       if ((ix * 7 + iz * 13) % 3 !== 0) continue;
-      place('tlight', ROAD_X[ix] + 8.6, ROAD_Z[iz] + 8.6, { h: 6.2, collider: true, kind: 'prop' });
+      place('tlight', ROAD_X[ix] + 7.8, ROAD_Z[iz] + 7.8, { h: 6.2, collider: true, kind: 'prop' });
     }
   }
   for (let i = 0; i < ROAD_Z.length; i++) {
@@ -882,7 +949,7 @@ export function buildWorld(scene, assets, { asphaltTex }) {
     const vertical = _rnd() < 0.5;
     const li = 1 + Math.floor(_rnd() * 5);
     const t = rnd(-150, 150);
-    const off = 5.15 + rnd(0, 0.5);
+    const off = 4.5 + rnd(0, 0.3);
     if (vertical) place(pick(parkedKeys), lineX(li) + (i % 2 ? off : -off), t, { len: rnd(4.2, 4.9), ry: i % 2 ? -Math.PI / 2 : Math.PI / 2, collider: true, kind: 'car' });
     else place(pick(parkedKeys), t, lineZ(li) + (i % 2 ? off : -off), { len: rnd(4.2, 4.9), ry: i % 2 ? 0 : Math.PI, collider: true, kind: 'car' });
   }

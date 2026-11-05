@@ -204,7 +204,7 @@ export function createPlayer(world, scene) {
 
   const s = {
     // spawn on the southern road, LEFT-HAND lane for +x travel, facing +x
-    x: world.depot.x + 8, z: world.ROAD_Z[world.ROAD_Z.length - 1] + 3.5,
+    x: world.depot.x + 8, z: world.ROAD_Z[world.ROAD_Z.length - 1] + 3.1,
     heading: Math.PI / 2,
     v: 0, steerAngle: 0,
     battery: RICK.batteryMax,

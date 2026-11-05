@@ -100,7 +100,7 @@ try {
 
   el('loading').classList.add('hidden');
   el('hud').classList.remove('hidden');
-  el('hud-top').textContent = 'R3 — TRAFFIC · drive with WASD · SPACE honks (peds jump!)';
+  el('hud-top').textContent = 'R3.5.2 — ALLEY MODE · hold GAS, honk at everyone';
   el('hud-bottom').innerHTML = `city: <b>${world.info.instances}</b> instances · traffic: <b>${traffic.cars.length}</b> cars · <b>${traffic.peds.length}</b> peds — green beacon recharges`;
 
   const speedVal = el('speed-val'), batBar = el('battery-bar'), msg = el('dash-msg');
@@ -111,16 +111,16 @@ try {
   const fwd = new THREE.Vector3();
   function updateCamera(dt, snap = false) {
     fwd.set(Math.sin(player.state.heading), 0, Math.cos(player.state.heading));
-    desired.copy(player.state.position).addScaledVector(fwd, -8.2).add(new THREE.Vector3(0, 3.9, 0));
+    desired.copy(player.state.position).addScaledVector(fwd, -5.2).add(new THREE.Vector3(0, 2.35, 0));
     if (snap) camPos.copy(desired);
-    else camPos.lerp(desired, 1 - Math.exp(-4.2 * dt));
+    else camPos.lerp(desired, 1 - Math.exp(-5.0 * dt));
     camera.position.copy(camPos);
     camera.lookAt(
-      player.state.position.x + fwd.x * 4.5,
-      1.35,
-      player.state.position.z + fwd.z * 4.5
+      player.state.position.x + fwd.x * 6.5,
+      1.7,
+      player.state.position.z + fwd.z * 6.5
     );
-    const fovKick = 55 + Math.min(6, Math.abs(player.state.v) * 0.4);
+    const fovKick = 60 + Math.min(7, Math.abs(player.state.v) * 0.5);
     if (Math.abs(camera.fov - fovKick) > 0.1) { camera.fov = fovKick; camera.updateProjectionMatrix(); }
   }
   // player.state.position is a getter-less plain object; wrap it:
@@ -143,8 +143,11 @@ try {
 
     // traffic + honk + crash events
     const evs = traffic.update(dt, input.horn);
+    let msgOverride = null;
     for (const e of evs) {
       if (e.impact > 4) { flash.classList.add('on'); flashTimer = 0.35; }
+      if (e.type === 'ped') { msgOverride = 'ARRE! OI THAMO! — SORRY MAMA!'; flashTimer = Math.max(flashTimer, 0.5); }
+      else if (e.type === 'car' && e.impact > 6) msgOverride = 'BHAGO!!'; 
     }
     if (flashTimer > 0) {
       flashTimer -= dt;
@@ -161,11 +164,12 @@ try {
     const pct = Math.max(0, Math.min(100, (s.battery / RICK.batteryMax) * 100));
     batBar.style.width = pct.toFixed(1) + '%';
     batBar.classList.toggle('low', pct < 25);
-    msg.textContent = s.recharging && pct < 99.9 ? 'RECHARGING…' :
+    msg.textContent = msgOverride ||
+      (s.recharging && pct < 99.9 ? 'RECHARGING…' :
       pct <= 0 ? 'BATTERY DEAD — MANUAL MODE (good luck)' :
       pct < 25 ? 'LOW BATTERY' :
       s.inWater ? 'WATER — 5x SLOW' :
-      flashTimer > 0 ? 'ARRE BABA!' : '';
+      flashTimer > 0 ? 'ARRE BABA!' : '');
 
     renderer.render(scene, camera);
   });

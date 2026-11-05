@@ -25,7 +25,7 @@ const res = await page.evaluate(() => {
     const fixed = c.vertical ? c.x : c.z;
     let dLine = Infinity;
     for (const rl of arr) dLine = Math.min(dLine, Math.abs(fixed - rl));
-    if (dLine < 4.2) onLane++;  // lane center sits 3.5 off the centerline
+    if (dLine < 3.8) onLane++;  // lane center sits 3.5 off the centerline
   });
   out.cars = { total: T.cars.length, moving, turned, onLane };
 
